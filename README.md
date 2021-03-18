@@ -16,8 +16,7 @@ On my phone, I have just installed an XMPP client.
 ## Having a working Golang environment:
 
 ```bash
-go get github.com/trazfr/prometheus-xmpp-alerting
-go install github.com/trazfr/prometheus-xmpp-alerting
+go install github.com/trazfr/prometheus-xmpp-alerting@latest
 ```
 
 ## Use
