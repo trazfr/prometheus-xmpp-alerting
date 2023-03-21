@@ -15,6 +15,7 @@ const (
 	xmppStatusChat  = "chat"
 	xmppHelpMessage = `Help:
  - help
+ - metrics
  - quit`
 )
 
@@ -27,6 +28,7 @@ type xmpp struct {
 }
 
 type xmppMessage struct {
+	to      *string
 	message string
 }
 
@@ -85,11 +87,23 @@ func (x *xmpp) Close() error {
 	return x.client.Close()
 }
 
+func (x *xmpp) sendTo(to, message string) error {
+	if message != "" {
+		x.channel <- xmppMessage{
+			to:      &to,
+			message: message,
+		}
+	}
+	return nil
+}
+
 func (x *xmpp) runSender() {
 	for payload := range x.channel {
-		for _, sendNotif := range x.sendNotif {
-			if err := x.sendTo(sendNotif, payload.message); err != nil {
-				log.Printf("ERROR %s\n", err)
+		if payload.to != nil {
+			x.sendToImmediate(*payload.to, payload.message)
+		} else {
+			for _, sendNotif := range x.sendNotif {
+				x.sendToImmediate(sendNotif, payload.message)
 			}
 		}
 	}
@@ -158,21 +172,31 @@ func (x *xmpp) handleCommand(from, command string) {
 	switch strings.ToLower(command) {
 	case "quit":
 		x.Close()
+	case "metrics":
+		if metrics, err := getMetrics(); err == nil {
+			for _, metric := range metrics {
+				x.sendTo(from, metric)
+			}
+		} else {
+			x.sendTo(from, fmt.Sprintf("Could not fetch the metrics: %s", err))
+		}
 	case "help":
-		x.Send(xmppHelpMessage)
+		x.sendTo(from, xmppHelpMessage)
 	default:
-		x.sendTo(from, fmt.Sprintf("Unknown command: %s", command))
+		x.sendTo(from, fmt.Sprintf("Unknown command: %s\n%s", command, xmppHelpMessage))
 	}
 }
 
-func (x *xmpp) sendTo(to, message string) error {
+func (x *xmpp) sendToImmediate(to, message string) {
 	promMessagesSentMetric.WithLabelValues(to).Inc()
 	_, err := x.client.Send(libxmpp.Chat{
 		Remote: to,
 		Type:   "chat",
 		Text:   message,
 	})
-	return err
+	if err != nil {
+		log.Printf("ERROR %s\n", err)
+	}
 }
 
 func (x *xmpp) debug(fmt string, v ...interface{}) {
