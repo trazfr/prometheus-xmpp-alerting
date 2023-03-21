@@ -34,8 +34,13 @@ type xmppMessage struct {
 
 // NewXMPP create an XMPP connection. Use Close() to end it
 func NewXMPP(config *Config) SendCloser {
-	log.Printf("Connect to XMPP account %s\n", config.XMPP.User)
+	if config.XMPP.OverrideServer != "" {
+		log.Println("Connect to the XMPP account ", config.XMPP.User, " using the server", config.XMPP.OverrideServer)
+	} else {
+		log.Println("Connect to the XMPP account ", config.XMPP.User, " using a server from the DNS records")
+	}
 	options := libxmpp.Options{
+		Host:          config.XMPP.OverrideServer,
 		User:          config.XMPP.User,
 		Password:      config.XMPP.Password,
 		Debug:         config.Debug,

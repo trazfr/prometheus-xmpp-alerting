@@ -20,12 +20,13 @@ type Config struct {
 
 // ConfigXMPP is the configuration for XMPP connection
 type ConfigXMPP struct {
-	User        string
-	Password    string
-	SendNotif   []string
-	Status      string
-	NoTLS       bool
-	TLSInsecure bool
+	OverrideServer string
+	User           string
+	Password       string
+	SendNotif      []string
+	Status         string
+	NoTLS          bool
+	TLSInsecure    bool
 }
 
 type internalConfig struct {
@@ -38,12 +39,13 @@ type internalConfig struct {
 }
 
 type internalConfigXMPP struct {
-	User        string   `json:"user"`
-	Password    string   `json:"password"`
-	SendNotif   []string `json:"send_notif"`
-	Status      string   `json:"status"`
-	NoTLS       bool     `json:"no_tls"`
-	TLSInsecure bool     `json:"tls_insecure"`
+	OverrideServer string   `json:"override_server"`
+	User           string   `json:"user"`
+	Password       string   `json:"password"`
+	SendNotif      []string `json:"send_notif"`
+	Status         string   `json:"status"`
+	NoTLS          bool     `json:"no_tls"`
+	TLSInsecure    bool     `json:"tls_insecure"`
 }
 
 // NewConfig reads the JSON file filename and generates a configuration
@@ -80,12 +82,13 @@ func (i *internalConfig) parse() *Config {
 
 func (i *internalConfigXMPP) parse() ConfigXMPP {
 	result := ConfigXMPP{
-		User:        i.User,
-		Password:    i.Password,
-		SendNotif:   i.SendNotif,
-		Status:      i.Status,
-		NoTLS:       i.NoTLS,
-		TLSInsecure: i.TLSInsecure,
+		OverrideServer: i.OverrideServer,
+		User:           i.User,
+		Password:       i.Password,
+		SendNotif:      i.SendNotif,
+		Status:         i.Status,
+		NoTLS:          i.NoTLS,
+		TLSInsecure:    i.TLSInsecure,
 	}
 	sort.Strings(result.SendNotif)
 	return result

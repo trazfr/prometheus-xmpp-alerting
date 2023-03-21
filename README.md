@@ -55,6 +55,23 @@ This example of configuration file shows:
 }
 ```
 
+## Exotic DNS configuration
+
+Usually, the admin creates DNS records to resolve the XMPP server.  
+In some circumstances such records are not created.
+
+The field `.xmpp.override_server` must be set to point to the right server:
+
+```json
+{
+    "xmpp": {
+        "override_server": "192.168.0.42:4212",
+        // ...
+    }
+    // ...
+}
+```
+
 ## Features
 
 This program uses HTTP with 3 different paths:
