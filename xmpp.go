@@ -37,9 +37,9 @@ type xmppMessage struct {
 // NewXMPP create an XMPP connection. Use Close() to end it
 func NewXMPP(config *Config) SendCloser {
 	if config.XMPP.OverrideServer != "" {
-		log.Println("Connect to the XMPP account ", config.XMPP.User, " using the server", config.XMPP.OverrideServer)
+		log.Println("Connect to the XMPP account", config.XMPP.User, "using the server", config.XMPP.OverrideServer)
 	} else {
-		log.Println("Connect to the XMPP account ", config.XMPP.User, " using a server from the DNS records")
+		log.Println("Connect to the XMPP account", config.XMPP.User, "using a server from the DNS records")
 	}
 	options := libxmpp.Options{
 		Host:          config.XMPP.OverrideServer,
@@ -178,7 +178,7 @@ func (x *xmpp) handlePresence(presence *libxmpp.Presence) {
 
 func (x *xmpp) handleCommand(from, command string) {
 	promMessagesReceivedMetric.WithLabelValues(from).Inc()
-	switch strings.ToLower(command) {
+	switch strings.ToLower(strings.TrimSpace(command)) {
 	case "quit":
 		x.Close()
 	case "metrics":
