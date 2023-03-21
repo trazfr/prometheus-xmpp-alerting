@@ -13,6 +13,10 @@ const (
 )
 
 var (
+	promInfo = prometheus.NewDesc(
+		promNamespace+"_info",
+		"constant metric with value=1. Various information about the XMPP connection.",
+		[]string{"encrypted", "jid"}, nil)
 	promAlertTriggeredMetric = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: promNamespace,
 		Name:      "alert_trigger_total",

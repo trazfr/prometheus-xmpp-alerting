@@ -6,9 +6,11 @@ import (
 	"io"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 
 	libxmpp "github.com/mattn/go-xmpp"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -66,6 +68,7 @@ func NewXMPP(config *Config) SendCloser {
 		status:    config.XMPP.Status,
 		sendNotif: config.XMPP.SendNotif,
 	}
+	prometheus.MustRegister(result)
 	go result.runSender()
 	go result.runReceiver()
 	if config.StartupMessage != "" {
@@ -84,6 +87,7 @@ func (x *xmpp) Send(message string) error {
 }
 
 func (x *xmpp) Close() error {
+	prometheus.Unregister(x)
 	close(x.channel)
 	x.client.SendPresence(libxmpp.Presence{
 		Show:   "unavailable",
@@ -208,4 +212,14 @@ func (x *xmpp) debug(fmt string, v ...interface{}) {
 	if x.debugMode {
 		log.Printf(fmt, v...)
 	}
+}
+
+// prometheus Collector
+
+func (x *xmpp) Describe(ch chan<- *prometheus.Desc) {
+	ch <- promInfo
+}
+
+func (x *xmpp) Collect(ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(promInfo, prometheus.GaugeValue, 1, strconv.FormatBool(x.client.IsEncrypted()), x.client.JID())
 }
