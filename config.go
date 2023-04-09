@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"sort"
+	"strings"
 	"text/template"
 )
 
@@ -15,6 +17,7 @@ type Config struct {
 	StartupMessage string
 	Firing         *template.Template
 	Resolved       *template.Template
+	Format         Format
 	XMPP           ConfigXMPP
 }
 
@@ -35,6 +38,7 @@ type internalConfig struct {
 	StartupMessage string             `json:"startup_message"`
 	Firing         string             `json:"firing"`
 	Resolved       string             `json:"resolved"`
+	Format         string             `json:"format"`
 	XMPP           internalConfigXMPP `json:"xmpp"`
 }
 
@@ -76,6 +80,7 @@ func (i *internalConfig) parse() *Config {
 		StartupMessage: i.StartupMessage,
 		Firing:         parseTemplate(i.Firing),
 		Resolved:       parseTemplate(i.Resolved),
+		Format:         parseFormat(i.Format),
 		XMPP:           i.XMPP.parse(),
 	}
 }
@@ -100,4 +105,14 @@ func parseTemplate(tmpl string) *template.Template {
 	}
 
 	return template.Must(template.New("").Parse(tmpl))
+}
+
+func parseFormat(format string) Format {
+	switch strings.ToLower(format) {
+	case "", "text":
+		return Format_Text
+	case "html":
+		return Format_HTML
+	}
+	panic(fmt.Sprintf("unknown format: %s", format))
 }

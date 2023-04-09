@@ -29,7 +29,9 @@ This example of configuration file shows:
 
  - the webhook listening on `127.0.0.1:9091`
  - when the instance is starting, it sends to everyone `Prometheus Monitoring Started`
- - that it sends a different message depending on a `severity` label
+ - it sends a different message depending on a `severity` label
+ - it sends a message when an alert is resolved
+ - the templates are in plain text. The possible values are `text` or `html` using [XEP-0071](https://xmpp.org/extensions/xep-0071.html) which is deprecated. If omitted, it defaults to `text`
  - the program uses the XMPP user `monitoring@example.com` with a password
  - when it is working, it has the status `Monitoring Prometheus...`
  - it doesn't use a TLS socket due to the `no_tls` flag. Actually it will use STARTTLS due to the server configuration
@@ -41,6 +43,8 @@ This example of configuration file shows:
     "listen": "127.0.0.1:9091",
     "startup_message": "Prometheus Monitoring Started",
     "firing": "{{ if eq .Labels.severity \"error\" }}🔥{{ else if eq .Labels.severity \"warning\" }}💣{{ else }}💡{{ end }} Firing {{ .Labels.alertname }}\n{{ .Annotations.description }} since {{ .StartsAt }}\n{{ .GeneratorURL }}",
+    "resolved": "{{ .Labels.alertname }} resolved",
+    "format": "text",
     "xmpp": {
         "user": "monitoring@example.com",
         "password": "MyXmppPassword",
@@ -77,6 +81,7 @@ The field `.xmpp.override_server` must be set to point to the right server:
 This program uses HTTP with 3 different paths:
 
  - `/alert` is used by Prometheus' Alertmanager to send alerts
- - `/send` is mainly used for debugging or if one just want to send simple message from another program. To send a message:  
-   `curl -H 'Content-Type: text/plain' -X POST <my_ip:port>/send -d 'my message'`
+ - `/send` is mainly used for debugging or if one just want to send simple message from another program. To send a message:
+   - `curl -H 'Content-Type: text/plain' -X POST <my_ip:port>/send -d 'my message'`  
+   - `curl -H 'Content-Type: text/html' -X POST <my_ip:port>/send -d '<p style="color:green;font-weight:bold;">Green text</p>'` if the client supports the deprecated XEP-0071
  - `/metrics` to be scrapped by Prometheus. It exposes some basic metrics

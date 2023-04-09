@@ -14,6 +14,7 @@ type alertHandler struct {
 	sender           Sender
 	firingTemplate   *template.Template
 	resolvedTemplate *template.Template
+	format           Format
 }
 
 // NewAlertHandler create an HTTP handler to receive prometheus webhook alerts
@@ -22,6 +23,7 @@ func NewAlertHandler(config *Config, sender Sender) http.Handler {
 		sender:           sender,
 		firingTemplate:   config.Firing,
 		resolvedTemplate: config.Resolved,
+		format:           config.Format,
 	}
 }
 
@@ -58,7 +60,7 @@ func (a *alertHandler) instantiateTemplate(tmpl *template.Template, alerts []pro
 	for alertIdx := range alerts {
 		if message := a.generateString(tmpl, &alerts[alertIdx]); message != "" {
 			promAlertsProcessedMetric.Inc()
-			a.sender.Send(message)
+			a.sender.Send(message, a.format)
 		}
 	}
 }

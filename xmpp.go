@@ -32,6 +32,7 @@ type xmpp struct {
 type xmppMessage struct {
 	to      *string
 	message string
+	format  Format
 }
 
 // NewXMPP create an XMPP connection. Use Close() to end it
@@ -72,15 +73,16 @@ func NewXMPP(config *Config) SendCloser {
 	go result.runSender()
 	go result.runReceiver()
 	if config.StartupMessage != "" {
-		result.Send(config.StartupMessage)
+		result.Send(config.StartupMessage, config.Format)
 	}
 	return result
 }
 
-func (x *xmpp) Send(message string) error {
+func (x *xmpp) Send(message string, format Format) error {
 	if message != "" {
 		x.channel <- xmppMessage{
 			message: message,
+			format:  format,
 		}
 	}
 	return nil
@@ -101,6 +103,7 @@ func (x *xmpp) sendTo(to, message string) error {
 		x.channel <- xmppMessage{
 			to:      &to,
 			message: message,
+			format:  Format_Text,
 		}
 	}
 	return nil
@@ -109,10 +112,10 @@ func (x *xmpp) sendTo(to, message string) error {
 func (x *xmpp) runSender() {
 	for payload := range x.channel {
 		if payload.to != nil {
-			x.sendToImmediate(*payload.to, payload.message)
+			x.sendToImmediate(*payload.to, payload.message, payload.format)
 		} else {
 			for _, sendNotif := range x.sendNotif {
-				x.sendToImmediate(sendNotif, payload.message)
+				x.sendToImmediate(sendNotif, payload.message, payload.format)
 			}
 		}
 	}
@@ -196,13 +199,13 @@ func (x *xmpp) handleCommand(from, command string) {
 	}
 }
 
-func (x *xmpp) sendToImmediate(to, message string) {
-	promMessagesSentMetric.WithLabelValues(to).Inc()
-	_, err := x.client.Send(libxmpp.Chat{
+func (x *xmpp) sendToImmediate(to, message string, format Format) {
+	promMessagesSentMetric.WithLabelValues(to, format.String()).Inc()
+	_, err := x.sendChat(libxmpp.Chat{
 		Remote: to,
 		Type:   "chat",
 		Text:   message,
-	})
+	}, format)
 	if err != nil {
 		log.Printf("ERROR %s\n", err)
 	}
@@ -211,6 +214,17 @@ func (x *xmpp) sendToImmediate(to, message string) {
 func (x *xmpp) debug(fmt string, v ...interface{}) {
 	if x.debugMode {
 		log.Printf(fmt, v...)
+	}
+}
+
+func (x *xmpp) sendChat(chat libxmpp.Chat, format Format) (n int, err error) {
+	switch format {
+	case Format_Text:
+		return x.client.Send(chat)
+	case Format_HTML:
+		return x.client.SendHtml(chat)
+	default:
+		return 0, fmt.Errorf("unknown format: %d", format)
 	}
 }
 
