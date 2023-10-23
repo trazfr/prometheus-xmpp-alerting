@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -19,7 +19,7 @@ func NewSendHandler(sender Sender) http.Handler {
 
 func (s *sendHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	if data, err := ioutil.ReadAll(r.Body); err == nil {
+	if data, err := io.ReadAll(r.Body); err == nil {
 		promSendTriggeredMetric.Inc()
 		s.sender.Send(string(data), s.getFormat(r.Header.Get("content-type")))
 	} else {
