@@ -36,7 +36,7 @@ var (
 		Namespace: promNamespace,
 		Name:      "messages_sent_total",
 		Help:      "Number of messages sent.",
-	}, []string{"recipient", "format"})
+	}, []string{"recipient", "recipient_type", "format"})
 	promMessagesReceivedMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: promNamespace,
 		Name:      "messages_received_total",

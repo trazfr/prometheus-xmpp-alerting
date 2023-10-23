@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -20,13 +21,21 @@ type Config struct {
 
 // ConfigXMPP is the configuration for XMPP connection
 type ConfigXMPP struct {
-	OverrideServer string   `json:"override_server"`
-	User           string   `json:"user"`
-	Password       string   `json:"password"`
-	SendNotif      []string `json:"send_notif"`
-	Status         string   `json:"status"`
-	NoTLS          bool     `json:"no_tls"`
-	TLSInsecure    bool     `json:"tls_insecure"`
+	OverrideServer string       `json:"override_server"`
+	User           string       `json:"user"`
+	Password       string       `json:"password"`
+	SendNotif      []string     `json:"send_notif"`
+	SendMUC        []*ConfigMUC `json:"send_muc"`
+	Status         string       `json:"status"`
+	NoTLS          bool         `json:"no_tls"`
+	TLSInsecure    bool         `json:"tls_insecure"`
+}
+
+// ConfigMUC is the list of MUC to join (xep-0045)
+type ConfigMUC struct {
+	Room     string  `json:"room"`
+	Nick     string  `json:"nick"`
+	Password *string `json:"password"`
 }
 
 // NewConfig reads the JSON file filename and generates a configuration
@@ -45,6 +54,13 @@ func NewConfig(filename string) *Config {
 	}
 	if err := json.NewDecoder(fd).Decode(config); err != nil {
 		log.Fatalln(err)
+	}
+
+	// default nick
+	for _, configMUC := range config.XMPP.SendMUC {
+		if configMUC.Nick == "" {
+			configMUC.Nick = strings.Split(config.XMPP.User, "@")[0]
+		}
 	}
 
 	return config

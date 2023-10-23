@@ -36,7 +36,9 @@ This example of configuration file shows:
  - when it is working, it has the status `Monitoring Prometheus...`
  - it doesn't use a TLS socket due to the `no_tls` flag. Actually it will use STARTTLS due to the server configuration
  - it doesn't check the TLS certificates thanks to `tls_insecure` (for some reason, it doesn't work on my Prosody install, but as I'm connecting to localhost, it doesn't matter)
- - each time it receives an alert, it sends a notification to 2 XMPP accounts `on-duty-1@example.com` and `on-duty-2@example.com`.
+ - each time it receives an alert, it sends a notification to
+   - 2 XMPP accounts `on-duty-1@example.com` and `on-duty-2@example.com`
+   - 1 MUC `monitoring-room-id@conference.example.com` using the nick `monitoring-bot`
 
 ```json
 {
@@ -54,6 +56,12 @@ This example of configuration file shows:
         "send_notif": [
             "on-duty-1@example.com",
             "on-duty-2@example.com"
+        ],
+        "send_muc": [
+            {
+                "room": "monitoring-room-id@conference.example.com",
+                "nick": "monitoring-bot"
+            }
         ]
     }
 }
@@ -82,6 +90,6 @@ This program uses HTTP with 3 different paths:
 
  - `/alert` is used by Prometheus' Alertmanager to send alerts
  - `/send` is mainly used for debugging or if one just want to send simple message from another program. To send a message:
-   - `curl -H 'Content-Type: text/plain' -X POST <my_ip:port>/send -d 'my message'`  
+   - `curl -H 'Content-Type: text/plain' -X POST <my_ip:port>/send -d 'my message'`
    - `curl -H 'Content-Type: text/html' -X POST <my_ip:port>/send -d '<p style="color:green;font-weight:bold;">Green text</p>'` if the client supports the deprecated XEP-0071
  - `/metrics` to be scrapped by Prometheus. It exposes some basic metrics

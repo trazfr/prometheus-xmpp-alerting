@@ -27,12 +27,42 @@ type xmpp struct {
 	channel   chan xmppMessage
 	status    string
 	sendNotif []string
+	sendMUC   []string
 }
 
 type xmppMessage struct {
 	to      *string
 	message string
 	format  Format
+}
+
+type xmppChatType int
+
+const (
+	xmppChatType_Chat xmppChatType = iota
+	xmppChatType_GroupChat
+)
+
+func (x xmppChatType) String() string {
+	switch x {
+	case xmppChatType_GroupChat:
+		return "groupchat"
+	case xmppChatType_Chat:
+		return "chat"
+	default:
+		return "chat"
+	}
+}
+
+func xmppChatTypeFrom(s string) (xmppChatType, error) {
+	switch s {
+	case xmppChatType_Chat.String():
+		return xmppChatType_Chat, nil
+	case xmppChatType_GroupChat.String():
+		return xmppChatType_GroupChat, nil
+	default:
+		return xmppChatType_Chat, fmt.Errorf("unhandled chat type: %s", s)
+	}
 }
 
 // NewXMPP create an XMPP connection. Use Close() to end it
@@ -69,7 +99,22 @@ func NewXMPP(config *Config) SendCloser {
 		status:    config.XMPP.Status,
 		sendNotif: config.XMPP.SendNotif,
 	}
+
+	for _, muc := range config.XMPP.SendMUC {
+		var err error
+		result.sendMUC = append(result.sendMUC, muc.Room)
+		if muc.Password != nil {
+			_, err = client.JoinProtectedMUC(muc.Room, muc.Nick, *muc.Password, libxmpp.NoHistory, 0, nil)
+		} else {
+			_, err = client.JoinMUC(muc.Room, muc.Nick, libxmpp.NoHistory, 0, nil)
+		}
+		if err != nil {
+			log.Fatalf("Could not connect to MUC: %s", err)
+		}
+	}
+
 	prometheus.MustRegister(result)
+
 	go result.runSender()
 	go result.runReceiver()
 	if config.StartupMessage != "" {
@@ -112,10 +157,13 @@ func (x *xmpp) sendTo(to, message string) error {
 func (x *xmpp) runSender() {
 	for payload := range x.channel {
 		if payload.to != nil {
-			x.sendToImmediate(*payload.to, payload.message, payload.format)
+			x.sendToImmediate(xmppChatType_Chat, *payload.to, payload.message, payload.format)
 		} else {
 			for _, sendNotif := range x.sendNotif {
-				x.sendToImmediate(sendNotif, payload.message, payload.format)
+				x.sendToImmediate(xmppChatType_Chat, sendNotif, payload.message, payload.format)
+			}
+			for _, room := range x.sendMUC {
+				x.sendToImmediate(xmppChatType_GroupChat, room, payload.message, payload.format)
 			}
 		}
 	}
@@ -134,7 +182,10 @@ func (x *xmpp) runReceiver() {
 		x.debug("Stanza: %v\n", stanza)
 		switch v := stanza.(type) {
 		case libxmpp.Chat:
-			x.handleChat(&v)
+			chatType, err := xmppChatTypeFrom(v.Type)
+			if err == nil && chatType == xmppChatType_Chat {
+				x.handleChat(&v)
+			}
 		case libxmpp.Presence:
 			x.handlePresence(&v)
 		}
@@ -160,7 +211,6 @@ func (x *xmpp) handleChat(chat *libxmpp.Chat) {
 
 func (x *xmpp) handlePresence(presence *libxmpp.Presence) {
 	switch presence.Type {
-	case "":
 	case "unavailable":
 		// something puts us as unavailable
 		if presence.From == x.client.JID() {
@@ -174,6 +224,8 @@ func (x *xmpp) handlePresence(presence *libxmpp.Presence) {
 			x.client.RevokeSubscription(presence.From)
 			x.debug("Revoked subscription to %s\n", presence.From)
 		}
+	case "error":
+		fmt.Printf("Error from %s", presence.From)
 	default:
 		x.debug("Unhandled presence: %v\n", presence)
 	}
@@ -199,11 +251,11 @@ func (x *xmpp) handleCommand(from, command string) {
 	}
 }
 
-func (x *xmpp) sendToImmediate(to, message string, format Format) {
-	promMessagesSentMetric.WithLabelValues(to, format.String()).Inc()
+func (x *xmpp) sendToImmediate(chatType xmppChatType, to, message string, format Format) {
+	promMessagesSentMetric.WithLabelValues(to, chatType.String(), format.String()).Inc()
 	_, err := x.sendChat(libxmpp.Chat{
 		Remote: to,
-		Type:   "chat",
+		Type:   chatType.String(),
 		Text:   message,
 	}, format)
 	if err != nil {
