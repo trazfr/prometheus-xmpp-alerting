@@ -21,8 +21,8 @@ type alertHandler struct {
 func NewAlertHandler(config *Config, sender Sender) http.Handler {
 	return &alertHandler{
 		sender:           sender,
-		firingTemplate:   config.Firing,
-		resolvedTemplate: config.Resolved,
+		firingTemplate:   config.Firing.ToTemplate(),
+		resolvedTemplate: config.Resolved.ToTemplate(),
 		format:           config.Format,
 	}
 }

@@ -1,5 +1,12 @@
 package main
 
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+// Format
 type Format int
 
 const (
@@ -16,6 +23,23 @@ func (f Format) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+func (f *Format) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	switch strings.ToLower(s) {
+	case "", "text":
+		*f = Format_Text
+	case "html":
+		*f = Format_HTML
+	default:
+		return fmt.Errorf("unknown format: %s", s)
+	}
+	return nil
 }
 
 // SendCloser is the interface to send messages
