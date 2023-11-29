@@ -4,7 +4,7 @@ Basic XMPP Alertmanager Webhook Receiver for Prometheus
 
 ## Purpose
 
-This repository has been made to receive Prometheus alerts on my Phone without relying on a third party provider.  
+This repository has been made to receive Prometheus alerts on my Phone without relying on a third party provider.\
 To do so I have installed on my Raspberry PI:
 
  - [Prometheus](https://prometheus.io/)
@@ -31,6 +31,7 @@ This example of configuration file shows:
  - when the instance is starting, it sends to everyone `Prometheus Monitoring Started`
  - it sends a different message depending on a `severity` label
  - it sends a message when an alert is resolved
+ - it overrides the timezone to `Europe/Paris` (optional, can either `UTC`, `Local` or from the [list of timezones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)). By default it keeps the timezone from the message sent by Alertmanager
  - the templates are in plain text. The possible values are `text` or `html` using [XEP-0071](https://xmpp.org/extensions/xep-0071.html) which is deprecated. If omitted, it defaults to `text`
  - the program uses the XMPP user `monitoring@example.com` with a password
  - when it is working, it has the status `Monitoring Prometheus...`
@@ -44,8 +45,9 @@ This example of configuration file shows:
 {
     "listen": "127.0.0.1:9091",
     "startup_message": "Prometheus Monitoring Started",
-    "firing": "{{ if eq .Labels.severity \"error\" }}🔥{{ else if eq .Labels.severity \"warning\" }}💣{{ else }}💡{{ end }} Firing {{ .Labels.alertname }}\n{{ .Annotations.description }} since {{ .StartsAt }}\n{{ .GeneratorURL }}",
-    "resolved": "{{ .Labels.alertname }} resolved",
+    "firing": "{{ if eq .Labels.severity \"error\" }}🔥{{ else if eq .Labels.severity \"warning\" }}💣{{ else }}💡{{ end }} Firing {{ .Labels.alertname }}\n{{ .Annotations.description }} since {{ .StartsAt.Format \"2006-01-02 15:04:05\" }}\n{{ .GeneratorURL }}",
+    "resolved": "{{ .Labels.alertname }} resolved at {{ .EndsAt.Format \"2006-01-02 15:04:05\" }}",
+    "time_zone": "Europe/Paris",
     "format": "text",
     "xmpp": {
         "user": "monitoring@example.com",
@@ -69,7 +71,7 @@ This example of configuration file shows:
 
 ## Exotic DNS configuration
 
-Usually, the admin creates DNS records to resolve the XMPP server.  
+Usually, the admin creates DNS records to resolve the XMPP server.\
 In some circumstances such records are not created.
 
 The field `.xmpp.override_server` must be set to point to the right server:

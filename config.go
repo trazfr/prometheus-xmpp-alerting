@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"time"
 )
 
 // Config is the internal configuration type
@@ -17,6 +18,7 @@ type Config struct {
 	Resolved       *ConfigTemplate `json:"resolved"`
 	Format         Format          `json:"format"`
 	XMPP           ConfigXMPP      `json:"xmpp"`
+	TimeZone       *ConfigTimeZone `json:"time_zone"`
 }
 
 // ConfigXMPP is the configuration for XMPP connection
@@ -85,4 +87,25 @@ func (c *ConfigTemplate) UnmarshalJSON(b []byte) error {
 
 func (c *ConfigTemplate) ToTemplate() *template.Template {
 	return (*template.Template)(c)
+}
+
+// ConfigTimeZone
+
+type ConfigTimeZone time.Location
+
+func (c *ConfigTimeZone) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	loc, err := time.LoadLocation(s)
+	if err == nil {
+		*c = ConfigTimeZone(*loc)
+	}
+	return err
+}
+
+func (c *ConfigTimeZone) ToLocation() *time.Location {
+	return (*time.Location)(c)
 }

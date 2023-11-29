@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"text/template"
+	"time"
 
 	promTemplate "github.com/prometheus/alertmanager/template"
 )
@@ -14,6 +15,7 @@ type alertHandler struct {
 	sender           Sender
 	firingTemplate   *template.Template
 	resolvedTemplate *template.Template
+	timeLoc          *time.Location
 	format           Format
 }
 
@@ -23,6 +25,7 @@ func NewAlertHandler(config *Config, sender Sender) http.Handler {
 		sender:           sender,
 		firingTemplate:   config.Firing.ToTemplate(),
 		resolvedTemplate: config.Resolved.ToTemplate(),
+		timeLoc:          config.TimeZone.ToLocation(),
 		format:           config.Format,
 	}
 }
@@ -57,8 +60,12 @@ func (a *alertHandler) instantiateTemplate(tmpl *template.Template, alerts []pro
 		return
 	}
 
-	for alertIdx := range alerts {
-		if message := a.generateString(tmpl, &alerts[alertIdx]); message != "" {
+	for _, alert := range alerts {
+		if a.timeLoc != nil {
+			alert.StartsAt = alert.StartsAt.In(a.timeLoc)
+			alert.EndsAt = alert.EndsAt.In(a.timeLoc)
+		}
+		if message := a.generateString(tmpl, &alert); message != "" {
 			promAlertsProcessedMetric.Inc()
 			a.sender.Send(message, a.format)
 		}
