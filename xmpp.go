@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,7 +24,6 @@ const (
 
 type xmpp struct {
 	client    *libxmpp.Client
-	debugMode bool
 	channel   chan xmppMessage
 	status    string
 	sendNotif []string
@@ -66,11 +66,11 @@ func xmppChatTypeFrom(s string) (xmppChatType, error) {
 }
 
 // NewXMPP create an XMPP connection. Use Close() to end it
-func NewXMPP(config *Config) SendCloser {
+func NewXMPP(config *Config) (SendCloser, error) {
 	if config.XMPP.OverrideServer != "" {
-		log.Println("Connect to the XMPP account", config.XMPP.User, "using the server", config.XMPP.OverrideServer)
+		slog.Info("Connect to the XMPP account", "user", config.XMPP.User, "method", "override", "server", config.XMPP.OverrideServer)
 	} else {
-		log.Println("Connect to the XMPP account", config.XMPP.User, "using a server from the DNS records")
+		slog.Info("Connect to the XMPP account", "user", config.XMPP.User, "method", "DNS SRV")
 	}
 	options := libxmpp.Options{
 		Host:          config.XMPP.OverrideServer,
@@ -89,12 +89,11 @@ func NewXMPP(config *Config) SendCloser {
 
 	client, err := options.NewClient()
 	if err != nil {
-		log.Fatalf("Could not connect to XMPP server: %s", err)
+		return nil, fmt.Errorf("could not connect to XMPP server: %w", err)
 	}
 
 	result := &xmpp{
 		client:    client,
-		debugMode: config.Debug,
 		channel:   make(chan xmppMessage),
 		status:    config.XMPP.Status,
 		sendNotif: config.XMPP.SendNotif,
@@ -109,7 +108,8 @@ func NewXMPP(config *Config) SendCloser {
 			_, err = client.JoinMUC(muc.Room, muc.Nick, libxmpp.NoHistory, 0, nil)
 		}
 		if err != nil {
-			log.Fatalf("Could not connect to MUC: %s", err)
+			client.Close()
+			return nil, fmt.Errorf("could not connect to MUC: %w", err)
 		}
 	}
 
@@ -120,7 +120,7 @@ func NewXMPP(config *Config) SendCloser {
 	if config.StartupMessage != "" {
 		result.Send(config.StartupMessage, config.Format)
 	}
-	return result
+	return result, nil
 }
 
 func (x *xmpp) Send(message string, format Format) error {
@@ -177,9 +177,9 @@ func (x *xmpp) runReceiver() {
 				x.Close()
 				return
 			}
-			log.Fatal(err)
+			log.Fatalln(err)
 		}
-		x.debug("Stanza: %v\n", stanza)
+		slog.Debug("Stanza: %v", stanza)
 		switch v := stanza.(type) {
 		case libxmpp.Chat:
 			chatType, err := xmppChatTypeFrom(v.Type)
@@ -201,10 +201,10 @@ func (x *xmpp) handleChat(chat *libxmpp.Chat) {
 	if chat.Text != "" {
 		remoteUser := strings.Split(chat.Remote, "/")
 		if len(remoteUser) == 2 && x.isKnown(remoteUser[0]) {
-			x.debug("CHAT type=%s, remote=%s, text=%s\n", chat.Type, chat.Remote, chat.Text)
+			slog.Debug("CHAT", "type", chat.Type, "remote", chat.Remote, "text", chat.Text)
 			x.handleCommand(remoteUser[0], chat.Text)
 		} else {
-			x.debug("Unknown user: %v\n", chat)
+			slog.Debug("Unknown user", "user", chat)
 		}
 	}
 }
@@ -219,15 +219,15 @@ func (x *xmpp) handlePresence(presence *libxmpp.Presence) {
 	case "subscribe":
 		if x.isKnown(presence.From) {
 			x.client.ApproveSubscription(presence.From)
-			x.debug("Approved subscription to %s\n", presence.From)
+			slog.Debug("Approved subscription", "user", presence.From)
 		} else {
 			x.client.RevokeSubscription(presence.From)
-			x.debug("Revoked subscription to %s\n", presence.From)
+			slog.Debug("Revoked subscription", "user", presence.From)
 		}
 	case "error":
-		fmt.Printf("Error from %s", presence.From)
+		slog.Info("Error", "user", presence.From)
 	default:
-		x.debug("Unhandled presence: %v\n", presence)
+		slog.Debug("Unhandled presence", "type", presence.Type, "from", presence.From)
 	}
 }
 
@@ -259,13 +259,7 @@ func (x *xmpp) sendToImmediate(chatType xmppChatType, to, message string, format
 		Text:   message,
 	}, format)
 	if err != nil {
-		log.Printf("ERROR %s\n", err)
-	}
-}
-
-func (x *xmpp) debug(fmt string, v ...interface{}) {
-	if x.debugMode {
-		log.Printf(fmt, v...)
+		slog.Error("Cannot send the XMPP message", "error", err)
 	}
 }
 

@@ -1,6 +1,6 @@
 module github.com/trazfr/prometheus-xmpp-alerting
 
-go 1.21.5
+go 1.22
 
 require (
 	github.com/prometheus/alertmanager v0.27.0

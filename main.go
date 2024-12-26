@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -15,7 +16,14 @@ func main() {
 	}
 
 	config := NewConfig(os.Args[1])
-	xmpp := NewXMPP(config)
+	if config.Debug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+	xmpp, err := NewXMPP(config)
+	if err != nil {
+		slog.Error("Cannot start the XMPP client", "error", err)
+		os.Exit(1)
+	}
 	defer xmpp.Close()
 
 	http.Handle("/alert", NewAlertHandler(config, xmpp))

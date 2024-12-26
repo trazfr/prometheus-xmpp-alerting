@@ -2,7 +2,7 @@ package main
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"unicode"
@@ -23,7 +23,7 @@ func (s *sendHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		promSendTriggeredMetric.Inc()
 		s.sender.Send(string(data), s.getFormat(r.Header.Get("content-type")))
 	} else {
-		log.Printf("sendHandler: could not read the body: %s\n", err)
+		slog.Error("sendHandler: could not read the body", "error", err)
 	}
 }
 
@@ -35,6 +35,6 @@ func (s *sendHandler) getFormat(contentType string) Format {
 	case "text/html", "application/xhtml+xml", "application/xml", "text/xml":
 		return Format_HTML
 	}
-	log.Printf("Unknown content-type: %s. Using the default: text/plain", contentType)
+	slog.Error("Unknown content-type. Using the default: text/plain", "content-type", contentType)
 	return Format_Text
 }

@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"text/template"
 	"time"
@@ -75,7 +75,7 @@ func (a *alertHandler) instantiateTemplate(tmpl *template.Template, alerts []pro
 func (a *alertHandler) generateString(tmpl *template.Template, alert *promTemplate.Alert) string {
 	buf := bytes.Buffer{}
 	if err := tmpl.Execute(&buf, alert); err != nil {
-		log.Printf("Could not instantiate template :%s\n", err)
+		slog.Error("Could not instantiate template", "error", err)
 		return ""
 	}
 	return buf.String()
