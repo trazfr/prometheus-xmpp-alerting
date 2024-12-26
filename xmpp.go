@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	libxmpp "github.com/mattn/go-xmpp"
 	"github.com/prometheus/client_golang/prometheus"
+	libxmpp "github.com/xmppo/go-xmpp"
 )
 
 const (
