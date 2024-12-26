@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	libxmpp "github.com/xmppo/go-xmpp"
@@ -170,6 +171,7 @@ func (x *xmpp) runSender() {
 }
 
 func (x *xmpp) runReceiver() {
+	errorNum := 0
 	for {
 		stanza, err := x.client.Recv()
 		if err != nil {
@@ -177,8 +179,16 @@ func (x *xmpp) runReceiver() {
 				x.Close()
 				return
 			}
-			log.Fatalln(err)
+			errorNum++
+			slog.Error("Could not receive the XMPP message", "error", err)
+			if errorNum > 5 {
+				slog.Error("Too many errors. Closing the XMPP connection")
+				os.Exit(1)
+			}
+			time.Sleep(1 * time.Second)
+			continue
 		}
+		errorNum = 0
 		slog.Debug("Stanza: %v", stanza)
 		switch v := stanza.(type) {
 		case libxmpp.Chat:

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -41,10 +40,10 @@ type ConfigMUC struct {
 }
 
 // NewConfig reads the JSON file filename and generates a configuration
-func NewConfig(filename string) *Config {
+func NewConfig(filename string) (*Config, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 	defer fd.Close()
 
@@ -55,7 +54,7 @@ func NewConfig(filename string) *Config {
 		},
 	}
 	if err := json.NewDecoder(fd).Decode(config); err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	// default nick
@@ -65,7 +64,7 @@ func NewConfig(filename string) *Config {
 		}
 	}
 
-	return config
+	return config, nil
 }
 
 // ConfigTemplate

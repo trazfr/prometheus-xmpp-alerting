@@ -15,7 +15,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	config := NewConfig(os.Args[1])
+	config, err := NewConfig(os.Args[1])
+	if err != nil {
+		slog.Error("Cannot read the configuration file", "error", err)
+		os.Exit(1)
+	}
+
 	if config.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
