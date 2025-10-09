@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,11 +25,13 @@ const (
 )
 
 type xmpp struct {
-	client    *libxmpp.Client
-	channel   chan xmppMessage
-	status    string
-	sendNotif []string
-	sendMUC   []string
+	client        *libxmpp.Client
+	channel       chan xmppMessage
+	status        string
+	sendNotif     []string
+	sendMUC       []string
+	closeCallback io.Closer
+	closed        atomic.Bool
 }
 
 type xmppMessage struct {
@@ -67,7 +70,7 @@ func xmppChatTypeFrom(s string) (xmppChatType, error) {
 }
 
 // NewXMPP create an XMPP connection. Use Close() to end it
-func NewXMPP(config *Config) (SendCloser, error) {
+func NewXMPP(config *Config, closeCallback io.Closer) (SendCloser, error) {
 	if config.XMPP.OverrideServer != "" {
 		slog.Info("Connect to the XMPP account", "user", config.XMPP.User, "method", "override", "server", config.XMPP.OverrideServer)
 	} else {
@@ -94,10 +97,12 @@ func NewXMPP(config *Config) (SendCloser, error) {
 	}
 
 	result := &xmpp{
-		client:    client,
-		channel:   make(chan xmppMessage),
-		status:    config.XMPP.Status,
-		sendNotif: config.XMPP.SendNotif,
+		client:        client,
+		channel:       make(chan xmppMessage),
+		status:        config.XMPP.Status,
+		sendNotif:     config.XMPP.SendNotif,
+		closeCallback: closeCallback,
+		closed:        atomic.Bool{},
 	}
 
 	for _, muc := range config.XMPP.SendMUC {
@@ -135,13 +140,20 @@ func (x *xmpp) Send(message string, format Format) error {
 }
 
 func (x *xmpp) Close() error {
+	if x.closed.Swap(true) {
+		return nil
+	}
+
 	prometheus.Unregister(x)
 	close(x.channel)
 	x.client.SendPresence(libxmpp.Presence{
 		Show:   "unavailable",
 		Status: "No monitoring",
 	})
-	return x.client.Close()
+	if err := x.client.Close(); err != nil {
+		slog.Error("Could not close the XMPP connection", "error", err)
+	}
+	return x.closeCallback.Close()
 }
 
 func (x *xmpp) sendTo(to, message string) error {
@@ -176,6 +188,7 @@ func (x *xmpp) runReceiver() {
 		stanza, err := x.client.Recv()
 		if err != nil {
 			if err == io.EOF {
+				slog.Error("XMPP connection closed", "error", err)
 				x.Close()
 				return
 			}

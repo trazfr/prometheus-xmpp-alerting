@@ -24,15 +24,22 @@ func main() {
 	if config.Debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
-	xmpp, err := NewXMPP(config)
+
+	mux := http.NewServeMux()
+	server := http.Server{
+		Addr:    config.Listen,
+		Handler: mux,
+	}
+
+	xmpp, err := NewXMPP(config, &server)
 	if err != nil {
 		slog.Error("Cannot start the XMPP client", "error", err)
 		os.Exit(1)
 	}
 	defer xmpp.Close()
 
-	http.Handle("/alert", NewAlertHandler(config, xmpp))
-	http.Handle("/send", NewSendHandler(xmpp))
-	http.Handle("/metrics", promhttp.Handler())
-	fmt.Println(http.ListenAndServe(config.Listen, nil))
+	mux.Handle("/alert", NewAlertHandler(config, xmpp))
+	mux.Handle("/send", NewSendHandler(xmpp))
+	mux.Handle("/metrics", promhttp.Handler())
+	slog.Info("Server closed", "error", server.ListenAndServe())
 }
