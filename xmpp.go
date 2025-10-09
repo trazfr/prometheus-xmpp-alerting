@@ -21,7 +21,7 @@ const (
 	xmppHelpMessage = `Help:
  - help
  - metrics
- - quit`
+ - ping`
 )
 
 type xmpp struct {
@@ -257,8 +257,8 @@ func (x *xmpp) handlePresence(presence *libxmpp.Presence) {
 func (x *xmpp) handleCommand(from, command string) {
 	promMessagesReceivedMetric.WithLabelValues(from).Inc()
 	switch strings.ToLower(strings.TrimSpace(command)) {
-	case "quit":
-		x.Close()
+	case "ping":
+		x.sendTo(from, "pong")
 	case "metrics":
 		if metrics, err := getMetrics(); err == nil {
 			for _, metric := range metrics {
