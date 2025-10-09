@@ -28,7 +28,7 @@ type ConfigXMPP struct {
 	SendNotif      []string     `json:"send_notif"`
 	SendMUC        []*ConfigMUC `json:"send_muc"`
 	Status         string       `json:"status"`
-	NoTLS          bool         `json:"no_tls"`
+	TLS            bool         `json:"tls"`
 	TLSInsecure    bool         `json:"tls_insecure"`
 }
 

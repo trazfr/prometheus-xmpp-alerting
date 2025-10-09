@@ -35,7 +35,7 @@ This example of configuration file shows:
  - the templates are in plain text. The possible values are `text` or `html` using [XEP-0071](https://xmpp.org/extensions/xep-0071.html) which is deprecated. If omitted, it defaults to `text`
  - the program uses the XMPP user `monitoring@example.com` with a password
  - when it is working, it has the status `Monitoring Prometheus...`
- - it doesn't use a TLS socket due to the `no_tls` flag. Actually it will use STARTTLS due to the server configuration
+ - it doesn't use a TLS socket due to the `tls` flag. Actually it will use STARTTLS due to the server configuration
  - it doesn't check the TLS certificates thanks to `tls_insecure` (for some reason, it doesn't work on my Prosody install, but as I'm connecting to localhost, it doesn't matter)
  - each time it receives an alert, it sends a notification to
    - 2 XMPP accounts `on-duty-1@example.com` and `on-duty-2@example.com`
@@ -53,7 +53,7 @@ This example of configuration file shows:
         "user": "monitoring@example.com",
         "password": "MyXmppPassword",
         "status": "Monitoring Prometheus...",
-        "no_tls": true,
+        "tls": false,
         "tls_insecure": true,
         "send_notif": [
             "on-duty-1@example.com",

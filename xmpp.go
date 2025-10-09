@@ -81,7 +81,7 @@ func NewXMPP(config *Config, closeCallback io.Closer) (SendCloser, error) {
 		User:          config.XMPP.User,
 		Password:      config.XMPP.Password,
 		Debug:         config.Debug,
-		NoTLS:         config.XMPP.NoTLS,
+		NoTLS:         !config.XMPP.TLS,
 		Status:        xmppStatusChat,
 		StatusMessage: config.XMPP.Status,
 	}
